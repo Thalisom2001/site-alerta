@@ -1,0 +1,13 @@
+{
+  "name": "site-alerta",
+  "version": "1.0.0",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "express": "^4.17.1",
+    "firebase-admin": "^10.0.0"
+  },
+  "type": "module"
+}

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Início - Nível do Rio Uraim</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Bem-vindo ao Site Alerta</h1>
+    <p>Este site informa o nível atual do Rio Uraim em Paragominas/PA. Fique atento aos alertas!</p>
+    <div id="nivel-container">
+      <span id="nivel-label">Nível do Rio:</span>
+      <span id="nivel-valor">Carregando...</span>
+      <span id="nivel-status"></span>
+    </div>
+  </div>
+  <script>
+    async function buscarNivel() {
+      const resposta = await fetch('/nivel-rio');
+      const dados = await resposta.json();
+      const nivel = Number(dados.nivel);
+      const nivelValor = document.getElementById('nivel-valor');
+      const nivelStatus = document.getElementById('nivel-status');
+
+      if (isNaN(nivel)) {
+        nivelValor.textContent = "Não disponível";
+        nivelStatus.textContent = "";
+        nivelValor.className = "";
+        return;
+      }
+
+      nivelValor.textContent = nivel.toFixed(2) + " m";
+
+      if (nivel < 3) {
+        nivelValor.className = "verde";
+        nivelStatus.textContent = " (Normal)";
+      } else if (nivel >= 3 && nivel < 4) {
+        nivelValor.className = "amarelo";
+        nivelStatus.textContent = " (Moderado)";
+      } else {
+        nivelValor.className = "vermelho";
+        nivelStatus.textContent = " (Crítico)";
+      }
+    }
+    buscarNivel();
+    setInterval(buscarNivel, 10000);
+  </script>
+</body>
+</html>
