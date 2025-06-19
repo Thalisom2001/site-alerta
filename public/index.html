@@ -2,28 +2,17 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>Painel do Administrador</title>
+  <title>Site Alerta - Cadastro e Nível do Rio</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <div class="container" id="login-container">
-    <h1>Login do Administrador</h1>
-    <form id="loginForm">
-      <input type="email" id="adminEmail" placeholder="E-mail" required />
-      <input type="password" id="adminSenha" placeholder="Senha" required />
-      <button type="submit">Entrar</button>
-    </form>
-  </div>
-  <div class="container" id="admin-panel" style="display:none;">
-    <h1>Painel do Administrador</h1>
-    <form id="nivelForm">
-      <input type="number" id="nivel" placeholder="Nível do Rio" required />
-      <button type="submit">Atualizar Nível</button>
-    </form>
-    <form id="alertaForm" style="margin-top:30px;">
-      <input type="text" id="titulo" placeholder="Título do Alerta" required />
-      <input type="text" id="mensagem" placeholder="Mensagem" required />
+  <div class="container" id="cadastro-container">
+    <h1>Cadastro de Usuário</h1>
+    <form id="cadastroForm">
+      <input type="text" id="nome" placeholder="Nome" required />
+      <input type="email" id="email" placeholder="E-mail" required />
       <select id="bairro" required>
+        <option value="" disabled selected>Selecione o bairro</option>
         <option value="Jaderlândia">Jaderlândia</option>
         <option value="Uraim II">Uraim II</option>
         <option value="Angelim">Angelim</option>
@@ -32,49 +21,70 @@
         <option value="Jardim Amazônico">Jardim Amazônico ou Laércio II</option>
         <option value="Camboatã">Camboatã</option>
       </select>
-      <button type="submit">Enviar Alerta</button>
+      <button type="submit">Cadastrar</button>
     </form>
   </div>
+  <div class="container" id="inicio-container" style="display:none;">
+    <h1>Bem-vindo ao Site Alerta</h1>
+    <p>Este site informa o nível atual do Rio Uraim em Paragominas/PA. Fique atento aos alertas!</p>
+    <div id="nivel-container">
+      <span id="nivel-label">Nível do Rio:</span>
+      <span id="nivel-valor">Carregando...</span>
+      <span id="nivel-status"></span>
+    </div>
+  </div>
   <script>
-    const emailCorreto = "thalisom.almeida@aluno.uepa.br";
-    const senhaCorreta = "Thalisoma1";
+    // Garante que o cadastro aparece primeiro
+    document.getElementById("cadastro-container").style.display = "block";
+    document.getElementById("inicio-container").style.display = "none";
 
-    document.getElementById("loginForm").addEventListener("submit", function(event) {
+    document.getElementById("cadastroForm").addEventListener("submit", async (event) => {
       event.preventDefault();
-      const email = document.getElementById("adminEmail").value;
-      const senha = document.getElementById("adminSenha").value;
-      if (email === emailCorreto && senha === senhaCorreta) {
-        document.getElementById("login-container").style.display = "none";
-        document.getElementById("admin-panel").style.display = "block";
-      } else {
-        alert("E-mail ou senha incorretos!");
-      }
-    });
-
-    document.getElementById("nivelForm").addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const nivel = document.getElementById("nivel").value;
-      const resposta = await fetch("/atualizar-nivel", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nivel })
-      });
-      alert(await resposta.text());
-    });
-
-    document.getElementById("alertaForm").addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const titulo = document.getElementById("titulo").value;
-      const mensagem = document.getElementById("mensagem").value;
+      const nome = document.getElementById("nome").value;
+      const email = document.getElementById("email").value;
       const bairro = document.getElementById("bairro").value;
 
-      const resposta = await fetch("/enviar-alerta", {
+      const resposta = await fetch("/cadastrar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ titulo, mensagem, bairro })
+        body: JSON.stringify({ nome, email, bairro })
       });
-      alert(await resposta.text());
+      const texto = await resposta.text();
+      alert(texto);
+
+      document.getElementById("cadastro-container").style.display = "none";
+      document.getElementById("inicio-container").style.display = "block";
+      buscarNivel();
+      setInterval(buscarNivel, 10000);
     });
+
+    async function buscarNivel() {
+      const resposta = await fetch('/nivel-rio');
+      const dados = await resposta.json();
+      const nivel = Number(dados.nivel);
+      const nivelValor = document.getElementById('nivel-valor');
+      const nivelStatus = document.getElementById('nivel-status');
+
+      if (isNaN(nivel)) {
+        nivelValor.textContent = "Não disponível";
+        nivelStatus.textContent = "";
+        nivelValor.className = "";
+        return;
+      }
+
+      nivelValor.textContent = nivel.toFixed(2) + " m";
+
+      if (nivel < 3) {
+        nivelValor.className = "verde";
+        nivelStatus.textContent = " (Normal)";
+      } else if (nivel >= 3 && nivel < 4) {
+        nivelValor.className = "amarelo";
+        nivelStatus.textContent = " (Moderado)";
+      } else {
+        nivelValor.className = "vermelho";
+        nivelStatus.textContent = " (Crítico)";
+      }
+    }
   </script>
 </body>
 </html>
