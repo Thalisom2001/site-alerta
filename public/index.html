@@ -2,49 +2,79 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>Início - Nível do Rio Uraim</title>
+  <title>Painel do Administrador</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <div class="container">
-    <h1>Bem-vindo ao Site Alerta</h1>
-    <p>Este site informa o nível atual do Rio Uraim em Paragominas/PA. Fique atento aos alertas!</p>
-    <div id="nivel-container">
-      <span id="nivel-label">Nível do Rio:</span>
-      <span id="nivel-valor">Carregando...</span>
-      <span id="nivel-status"></span>
-    </div>
+  <div class="container" id="login-container">
+    <h1>Login do Administrador</h1>
+    <form id="loginForm">
+      <input type="email" id="adminEmail" placeholder="E-mail" required />
+      <input type="password" id="adminSenha" placeholder="Senha" required />
+      <button type="submit">Entrar</button>
+    </form>
+  </div>
+  <div class="container" id="admin-panel" style="display:none;">
+    <h1>Painel do Administrador</h1>
+    <form id="nivelForm">
+      <input type="number" id="nivel" placeholder="Nível do Rio" required />
+      <button type="submit">Atualizar Nível</button>
+    </form>
+    <form id="alertaForm" style="margin-top:30px;">
+      <input type="text" id="titulo" placeholder="Título do Alerta" required />
+      <input type="text" id="mensagem" placeholder="Mensagem" required />
+      <select id="bairro" required>
+        <option value="Jaderlândia">Jaderlândia</option>
+        <option value="Uraim II">Uraim II</option>
+        <option value="Angelim">Angelim</option>
+        <option value="Promissão II">Promissão II</option>
+        <option value="Centro">Centro</option>
+        <option value="Jardim Amazônico">Jardim Amazônico ou Laércio II</option>
+        <option value="Camboatã">Camboatã</option>
+      </select>
+      <button type="submit">Enviar Alerta</button>
+    </form>
   </div>
   <script>
-    async function buscarNivel() {
-      const resposta = await fetch('/nivel-rio');
-      const dados = await resposta.json();
-      const nivel = Number(dados.nivel);
-      const nivelValor = document.getElementById('nivel-valor');
-      const nivelStatus = document.getElementById('nivel-status');
+    const emailCorreto = "thalisom.almeida@aluno.uepa.br";
+    const senhaCorreta = "Thalisoma1";
 
-      if (isNaN(nivel)) {
-        nivelValor.textContent = "Não disponível";
-        nivelStatus.textContent = "";
-        nivelValor.className = "";
-        return;
-      }
-
-      nivelValor.textContent = nivel.toFixed(2) + " m";
-
-      if (nivel < 3) {
-        nivelValor.className = "verde";
-        nivelStatus.textContent = " (Normal)";
-      } else if (nivel >= 3 && nivel < 4) {
-        nivelValor.className = "amarelo";
-        nivelStatus.textContent = " (Moderado)";
+    document.getElementById("loginForm").addEventListener("submit", function(event) {
+      event.preventDefault();
+      const email = document.getElementById("adminEmail").value;
+      const senha = document.getElementById("adminSenha").value;
+      if (email === emailCorreto && senha === senhaCorreta) {
+        document.getElementById("login-container").style.display = "none";
+        document.getElementById("admin-panel").style.display = "block";
       } else {
-        nivelValor.className = "vermelho";
-        nivelStatus.textContent = " (Crítico)";
+        alert("E-mail ou senha incorretos!");
       }
-    }
-    buscarNivel();
-    setInterval(buscarNivel, 10000);
+    });
+
+    document.getElementById("nivelForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const nivel = document.getElementById("nivel").value;
+      const resposta = await fetch("/atualizar-nivel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nivel })
+      });
+      alert(await resposta.text());
+    });
+
+    document.getElementById("alertaForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const titulo = document.getElementById("titulo").value;
+      const mensagem = document.getElementById("mensagem").value;
+      const bairro = document.getElementById("bairro").value;
+
+      const resposta = await fetch("/enviar-alerta", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ titulo, mensagem, bairro })
+      });
+      alert(await resposta.text());
+    });
   </script>
 </body>
 </html>
