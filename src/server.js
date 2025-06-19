@@ -1,6 +1,5 @@
 import express from 'express';
 import admin from 'firebase-admin';
-import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -60,10 +59,22 @@ app.post("/atualizar-nivel", async (req, res) => {
   }
 });
 
-// API para enviar alerta (admin)
+// API para salvar token FCM do usuário
+app.post("/salvar-token", async (req, res) => {
+  const { email, token } = req.body;
+  try {
+    await db.collection("tokens").doc(email).set({ token });
+    res.status(200).send("Token salvo com sucesso!");
+  } catch (error) {
+    res.status(500).send("Erro ao salvar token: " + error.message);
+  }
+});
+
+// API para enviar alerta (admin) e notificação push
 app.post("/enviar-alerta", async (req, res) => {
   const { titulo, mensagem, bairro } = req.body;
   try {
+    // Salva o alerta para os usuários do bairro
     const usuariosRef = db.collection("usuarios");
     const usuariosSnapshot = await usuariosRef.where("bairro", "==", bairro).get();
 
@@ -80,7 +91,26 @@ app.post("/enviar-alerta", async (req, res) => {
     });
     await batch.commit();
 
-    res.status(200).send("Alertas enviados com sucesso!");
+    // Busca todos os tokens cadastrados
+    const tokensSnapshot = await db.collection("tokens").get();
+    const tokens = [];
+    tokensSnapshot.forEach(doc => {
+      tokens.push(doc.data().token);
+    });
+
+    // Monta a mensagem push
+    const message = {
+      notification: {
+        title: titulo,
+        body: mensagem
+      },
+      tokens: tokens
+    };
+
+    // Envia a notificação push
+    const response = await admin.messaging().sendMulticast(message);
+
+    res.status(200).send(`Alertas enviados! Sucesso: ${response.successCount}, Falha: ${response.failureCount}`);
   } catch (error) {
     res.status(500).send("Erro ao enviar alertas: " + error.message);
   }
