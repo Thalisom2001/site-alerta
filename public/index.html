@@ -51,12 +51,9 @@
     firebase.initializeApp(firebaseConfig);
     const messaging = firebase.messaging();
 
-    // Registra o service worker do FCM
+    // Registra o service worker do FCM (sem useServiceWorker)
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/firebase-messaging-sw.js')
-        .then(function(registration) {
-          messaging.useServiceWorker(registration);
-        });
+      navigator.serviceWorker.register('/firebase-messaging-sw.js');
     }
 
     // Função para pedir permissão e salvar o token FCM
