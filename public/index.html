@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <title>Site Alerta - Cadastro e Nível do Rio</title>
   <link rel="stylesheet" href="css/style.css">
+  <!-- Firebase App (core) -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <!-- Firebase Messaging -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-messaging-compat.js"></script>
 </head>
 <body>
   <div class="container" id="cadastro-container">
@@ -34,6 +38,48 @@
     </div>
   </div>
   <script>
+    // === CONFIGURAÇÃO DO FIREBASE ===
+    const firebaseConfig = {
+      apiKey: "AIzaSyD5RHWEUk_F4nO2sYytC7InGqIotFPLWvo",
+      authDomain: "site-alerta-219e8.firebaseapp.com",
+      projectId: "site-alerta-219e8",
+      storageBucket: "site-alerta-219e8.appspot.com",
+      messagingSenderId: "972115747427",
+      appId: "1:972115747427:web:94007eddafd0efbfb88e56",
+      measurementId: "G-DKXX5EMXG0"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const messaging = firebase.messaging();
+
+    // Registra o service worker do FCM
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/firebase-messaging-sw.js')
+        .then(function(registration) {
+          messaging.useServiceWorker(registration);
+        });
+    }
+
+    // Função para pedir permissão e salvar o token FCM
+    async function pedirPermissaoNotificacao(email) {
+      try {
+        await Notification.requestPermission();
+        const token = await messaging.getToken({
+          vapidKey: "BBFtCbL6xnHxUJlxoMWI8yduCotj1-5WVyG9OiPN77wmXtsIBiEqAa66n2oxydj-bM7bz-e6WY3mHnMz3nwa_kI"
+        });
+        if (token) {
+          await fetch("/salvar-token", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, token })
+          });
+        } else {
+          console.log("Não foi possível obter o token FCM.");
+        }
+      } catch (err) {
+        console.log("Permissão de notificação negada ou erro ao obter token", err);
+      }
+    }
+
     // Garante que o cadastro aparece primeiro
     document.getElementById("cadastro-container").style.display = "block";
     document.getElementById("inicio-container").style.display = "none";
@@ -51,6 +97,9 @@
       });
       const texto = await resposta.text();
       alert(texto);
+
+      // Pede permissão para notificações push
+      pedirPermissaoNotificacao(email);
 
       document.getElementById("cadastro-container").style.display = "none";
       document.getElementById("inicio-container").style.display = "block";
