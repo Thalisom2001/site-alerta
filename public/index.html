@@ -61,7 +61,7 @@
       try {
         await Notification.requestPermission();
         const token = await messaging.getToken({
-          vapidKey: "BBFtCbL6xnHxUJlxoMWI8yduCotj1-5WVyG9OiPN77wmXtsIBiEqAa66n2oxydj-bM7bz-e6WY3mHnMz3nwa_kI"
+          vapidKey: "BML_4olUoboxqhWK13mdVXQcKK-PtYWx7RYts8p0VgvNIzV9xq2AeAShKzvG10-fdb4TyNvR_lLuV6bS2KvUTvs"
         });
         if (token) {
           await fetch("/salvar-token", {
