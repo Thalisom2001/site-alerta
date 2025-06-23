@@ -2,6 +2,7 @@ import express from 'express';
 import admin from 'firebase-admin';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -9,13 +10,22 @@ const port = process.env.PORT || 3000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Lê a chave do Firebase da variável de ambiente
-const serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT_KEY);
+// Lê a chave do Firebase da variável de ambiente ou do arquivo local
+let serviceAccount;
+if (process.env.SERVICE_ACCOUNT_KEY) {
+  serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT_KEY);
+} else {
+  serviceAccount = JSON.parse(fs.readFileSync(path.join(__dirname, './serviceAccountKey.json'), 'utf8'));
+}
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
   databaseURL: "https://site-alerta-219e8.firebaseio.com"
 });
+
+// Logs de depuração após inicializar o app
+console.log("firebase-admin version:", admin.SDK_VERSION || admin.version);
+console.log("sendMulticast existe?", typeof admin.messaging().sendMulticast);
 
 const db = admin.firestore();
 
@@ -72,6 +82,7 @@ app.post("/salvar-token", async (req, res) => {
 
 // API para enviar alerta (admin) e notificação push
 app.post("/enviar-alerta", async (req, res) => {
+  console.log("Body recebido:", req.body); // <-- Para depuração
   const { titulo, mensagem, bairro } = req.body;
   try {
     // Salva o alerta para os usuários do bairro
@@ -95,8 +106,18 @@ app.post("/enviar-alerta", async (req, res) => {
     const tokensSnapshot = await db.collection("tokens").get();
     const tokens = [];
     tokensSnapshot.forEach(doc => {
-      tokens.push(doc.data().token);
+      // Garante que o campo token existe e não está vazio
+      if (doc.data().token && typeof doc.data().token === 'string' && doc.data().token.length > 0) {
+        tokens.push(doc.data().token);
+      }
     });
+
+    // DEBUG: Mostra os tokens encontrados
+    console.log("Tokens encontrados:", tokens);
+
+    if (tokens.length === 0) {
+      throw new Error('Nenhum token FCM válido encontrado para envio.');
+    }
 
     // Monta a mensagem push
     const message = {
@@ -108,11 +129,15 @@ app.post("/enviar-alerta", async (req, res) => {
     };
 
     // Envia a notificação push
+    if (typeof admin.messaging().sendMulticast !== 'function') {
+      throw new Error('sendMulticast não está disponível no firebase-admin. Verifique a versão do pacote!');
+    }
     const response = await admin.messaging().sendMulticast(message);
 
     res.status(200).send(`Alertas enviados! Sucesso: ${response.successCount}, Falha: ${response.failureCount}`);
   } catch (error) {
-    res.status(500).send("Erro ao enviar alertas: " + error.message);
+    console.error("Erro ao enviar alertas:", error); // <-- Mostra o erro no terminal
+    res.status(500).send("Erro ao enviar alertas: " + error.stack);
   }
 });
 

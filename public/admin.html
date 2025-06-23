@@ -68,12 +68,20 @@
       const mensagem = document.getElementById("mensagem").value;
       const bairro = document.getElementById("bairro").value;
 
-      const resposta = await fetch("/enviar-alerta", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ titulo, mensagem, bairro })
-      });
-      alert(await resposta.text());
+      try {
+        const resposta = await fetch("/enviar-alerta", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ titulo, mensagem, bairro })
+        });
+        const texto = await resposta.text();
+        if (!resposta.ok) {
+          throw new Error(texto);
+        }
+        alert(texto);
+      } catch (err) {
+        alert("Erro ao enviar alerta: " + err.message);
+      }
     });
   </script>
 </body>
