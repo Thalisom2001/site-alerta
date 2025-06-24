@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Painel do Administrador</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -16,8 +17,15 @@
   </div>
   <div class="container" id="admin-panel" style="display:none;">
     <h1>Painel do Administrador</h1>
+    <div class="nivel-rio" style="margin-bottom:24px;">
+      <h2>
+        <span id="nivel-valor" class="verde">--</span><br>
+        <span id="nivel-label"></span>
+      </h2>
+      <span>Nível atual do Rio Uraim</span>
+    </div>
     <form id="nivelForm">
-      <input type="number" id="nivel" placeholder="Nível do Rio" required />
+      <input type="text" id="nivel" placeholder="Nível do Rio (ex: 2.3 ou 2,3)" required />
       <button type="submit">Atualizar Nível</button>
     </form>
     <form id="alertaForm" style="margin-top:30px;">
@@ -46,20 +54,54 @@
       if (email === emailCorreto && senha === senhaCorreta) {
         document.getElementById("login-container").style.display = "none";
         document.getElementById("admin-panel").style.display = "block";
+        carregarNivel();
       } else {
         alert("E-mail ou senha incorretos!");
       }
     });
 
+    async function carregarNivel() {
+      // Busca o nível do rio e aplica cor/status
+      const resp = await fetch('/nivel-rio');
+      const d = await resp.json();
+      const nivel = parseFloat(d.nivel);
+      const nivelValor = document.getElementById('nivel-valor');
+      const nivelLabel = document.getElementById('nivel-label');
+      let cor = 'verde';
+      let status = 'Normal';
+
+      if (!isNaN(nivel)) {
+        if (nivel >= 4) {
+          cor = 'vermelho';
+          status = 'Crítico';
+        } else if (nivel >= 3) {
+          cor = 'amarelo';
+          status = 'Moderado';
+        }
+        nivelValor.textContent = nivel.toLocaleString('pt-BR', {minimumFractionDigits: 1, maximumFractionDigits: 2}) + " m";
+        nivelValor.className = cor;
+        nivelLabel.textContent = status;
+      } else {
+        nivelValor.textContent = "--";
+        nivelValor.className = "verde";
+        nivelLabel.textContent = "";
+      }
+    }
+
     document.getElementById("nivelForm").addEventListener("submit", async (event) => {
       event.preventDefault();
-      const nivel = document.getElementById("nivel").value;
+      let nivel = document.getElementById("nivel").value.trim().replace(',', '.');
+      if (isNaN(nivel) || nivel === "") {
+        alert("Digite um valor numérico válido para o nível do rio.");
+        return;
+      }
       const resposta = await fetch("/atualizar-nivel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nivel })
       });
       alert(await resposta.text());
+      carregarNivel(); // Atualiza o painel após salvar
     });
 
     document.getElementById("alertaForm").addEventListener("submit", async (event) => {

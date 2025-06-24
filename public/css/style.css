@@ -5,45 +5,96 @@ body {
   padding: 0;
 }
 
+.header-img {
+  width: 100%;
+  max-height: 320px;
+  object-fit: cover;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
 .container {
-  max-width: 400px;
-  margin: 60px auto;
+  max-width: 480px;
+  margin: -60px auto 0 auto;
   background: #fff;
   border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
   padding: 32px 24px 24px 24px;
+  position: relative;
+  z-index: 2;
   text-align: center;
 }
 
-h1 {
-  color: #1a237e;
-  margin-bottom: 18px;
+.nivel-rio {
+  text-align: center;
+  margin-bottom: 24px;
 }
 
-form {
+.nivel-rio h2 {
+  margin: 0 0 8px 0;
+  font-size: 2.2em;
+  color: #1e88e5;
+}
+
+.nivel-rio span {
+  font-size: 1.1em;
+  color: #555;
+}
+
+.intro {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.intro h1 {
+  margin: 0 0 8px 0;
+  font-size: 1.7em;
+  color: #1e88e5;
+}
+
+.intro p {
+  margin: 0;
+  color: #444;
+  font-size: 1.1em;
+}
+
+.cadastro {
+  margin-top: 24px;
+  padding: 20px 16px;
+  background: #e3f2fd;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.cadastro h3 {
+  margin: 0 0 8px 0;
+  color: #1565c0;
+  font-size: 1.2em;
+}
+
+.cadastro form {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
+  margin-top: 10px;
 }
 
-input, select, button {
+.cadastro input, .cadastro select, .cadastro button {
   padding: 10px;
   border-radius: 6px;
-  border: 1px solid #bdbdbd;
-  font-size: 1rem;
+  border: 1px solid #b3c6e0;
+  font-size: 1em;
 }
 
-button {
+.cadastro button {
   background: #1976d2;
   color: #fff;
   border: none;
   cursor: pointer;
-  font-weight: bold;
   transition: background 0.2s;
 }
 
-button:hover {
-  background: #0d47a1;
+.cadastro button:hover {
+  background: #1565c0;
 }
 
 #nivel-container {
@@ -89,7 +140,9 @@ button:hover {
 @media (max-width: 600px) {
   .container {
     max-width: 98vw;
-    padding: 18px 4vw;
+    margin: 16px auto 0 auto;
+    padding: 16px 8px;
+    box-sizing: border-box;
   }
   #nivel-valor {
     font-size: 2rem;
