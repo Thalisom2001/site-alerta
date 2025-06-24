@@ -128,35 +128,31 @@ app.post("/enviar-alerta", async (req, res) => {
       throw new Error('Nenhum token FCM válido encontrado para envio.');
     }
 
-    // Monta a mensagem push
-    const message = {
-      notification: {
-        title: titulo,
-        body: mensagem
-      },
-      tokens: tokens
-    };
-
-    // Envia a notificação push
-    if (typeof admin.messaging().sendMulticast !== 'function') {
-      console.log("Métodos disponíveis em admin.messaging():", Object.keys(admin.messaging()));
-      throw new Error('sendMulticast não está disponível no firebase-admin. Verifique a versão do pacote!');
-    }
-    const response = await admin.messaging().sendMulticast(message);
-
-    // Identifica tokens inválidos
+    // Envia notificações em loop (substitui sendMulticast)
+    let successCount = 0;
+    let failureCount = 0;
     const invalidTokens = [];
-    response.responses.forEach((resp, idx) => {
-      if (!resp.success) {
-        const errCode = resp.error && resp.error.code;
+
+    for (const token of tokens) {
+      try {
+        await admin.messaging().send({
+          notification: {
+            title: titulo,
+            body: mensagem
+          },
+          token: token
+        });
+        successCount++;
+      } catch (error) {
+        failureCount++;
         if (
-          errCode === 'messaging/registration-token-not-registered' ||
-          errCode === 'messaging/invalid-registration-token'
+          error.code === 'messaging/registration-token-not-registered' ||
+          error.code === 'messaging/invalid-registration-token'
         ) {
-          invalidTokens.push(tokens[idx]);
+          invalidTokens.push(token);
         }
       }
-    });
+    }
 
     // Remove tokens inválidos do Firestore
     if (invalidTokens.length > 0) {
@@ -176,7 +172,7 @@ app.post("/enviar-alerta", async (req, res) => {
     }
 
     res.status(200).send(
-      `Alertas enviados! Sucesso: ${response.successCount}, Falha: ${response.failureCount}` +
+      `Alertas enviados! Sucesso: ${successCount}, Falha: ${failureCount}` +
       (invalidTokens.length > 0 ? `\nTokens removidos: ${invalidTokens.join(", ")}` : "")
     );
   } catch (error) {
