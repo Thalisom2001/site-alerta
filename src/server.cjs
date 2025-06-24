@@ -1,29 +1,40 @@
-import express from 'express';
-import admin from 'firebase-admin';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import fs from 'fs';
+const express = require('express');
+const admin = require('firebase-admin');
+const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// NÃO redefina __dirname, ele já existe no CommonJS
 
-// Lê a chave do Firebase da variável de ambiente ou do arquivo local
 let serviceAccount;
 if (process.env.SERVICE_ACCOUNT_KEY) {
-  serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT_KEY);
+  try {
+    serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT_KEY);
+  } catch (e) {
+    console.error("Erro ao fazer parse da variável SERVICE_ACCOUNT_KEY:", e);
+    process.exit(1);
+  }
 } else {
-  serviceAccount = JSON.parse(fs.readFileSync(path.join(__dirname, './serviceAccountKey.json'), 'utf8'));
+  try {
+    serviceAccount = JSON.parse(fs.readFileSync(path.join(__dirname, './serviceAccountKey.json'), 'utf8'));
+  } catch (e) {
+    console.error("Arquivo serviceAccountKey.json não encontrado ou inválido:", e);
+    process.exit(1);
+  }
 }
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  databaseURL: "https://site-alerta-219e8.firebaseio.com"
-});
+try {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    projectId: serviceAccount.project_id
+  });
+  console.log("Firebase Admin inicializado com sucesso!");
+} catch (e) {
+  console.error("Erro ao inicializar Firebase Admin:", e);
+}
 
-// Logs de depuração após inicializar o app
 console.log("firebase-admin version:", admin.SDK_VERSION || admin.version);
 console.log("sendMulticast existe?", typeof admin.messaging().sendMulticast);
 
@@ -82,7 +93,7 @@ app.post("/salvar-token", async (req, res) => {
 
 // API para enviar alerta (admin) e notificação push
 app.post("/enviar-alerta", async (req, res) => {
-  console.log("Body recebido:", req.body); // <-- Para depuração
+  console.log("Body recebido:", req.body);
   const { titulo, mensagem, bairro } = req.body;
   try {
     // Salva o alerta para os usuários do bairro
@@ -106,13 +117,11 @@ app.post("/enviar-alerta", async (req, res) => {
     const tokensSnapshot = await db.collection("tokens").get();
     const tokens = [];
     tokensSnapshot.forEach(doc => {
-      // Garante que o campo token existe e não está vazio
       if (doc.data().token && typeof doc.data().token === 'string' && doc.data().token.length > 0) {
         tokens.push(doc.data().token);
       }
     });
 
-    // DEBUG: Mostra os tokens encontrados
     console.log("Tokens encontrados:", tokens);
 
     if (tokens.length === 0) {
@@ -130,13 +139,48 @@ app.post("/enviar-alerta", async (req, res) => {
 
     // Envia a notificação push
     if (typeof admin.messaging().sendMulticast !== 'function') {
+      console.log("Métodos disponíveis em admin.messaging():", Object.keys(admin.messaging()));
       throw new Error('sendMulticast não está disponível no firebase-admin. Verifique a versão do pacote!');
     }
     const response = await admin.messaging().sendMulticast(message);
 
-    res.status(200).send(`Alertas enviados! Sucesso: ${response.successCount}, Falha: ${response.failureCount}`);
+    // Identifica tokens inválidos
+    const invalidTokens = [];
+    response.responses.forEach((resp, idx) => {
+      if (!resp.success) {
+        const errCode = resp.error && resp.error.code;
+        if (
+          errCode === 'messaging/registration-token-not-registered' ||
+          errCode === 'messaging/invalid-registration-token'
+        ) {
+          invalidTokens.push(tokens[idx]);
+        }
+      }
+    });
+
+    // Remove tokens inválidos do Firestore
+    if (invalidTokens.length > 0) {
+      const batchRemove = db.batch();
+      const snapshots = await Promise.all(
+        invalidTokens.map(token =>
+          db.collection("tokens").where("token", "==", token).get()
+        )
+      );
+      snapshots.forEach(snapshot => {
+        snapshot.forEach(doc => {
+          batchRemove.delete(doc.ref);
+        });
+      });
+      await batchRemove.commit();
+      console.log("Tokens inválidos removidos:", invalidTokens);
+    }
+
+    res.status(200).send(
+      `Alertas enviados! Sucesso: ${response.successCount}, Falha: ${response.failureCount}` +
+      (invalidTokens.length > 0 ? `\nTokens removidos: ${invalidTokens.join(", ")}` : "")
+    );
   } catch (error) {
-    console.error("Erro ao enviar alertas:", error); // <-- Mostra o erro no terminal
+    console.error("Erro ao enviar alertas:", error);
     res.status(500).send("Erro ao enviar alertas: " + error.stack);
   }
 });

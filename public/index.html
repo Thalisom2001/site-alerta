@@ -51,26 +51,29 @@
     firebase.initializeApp(firebaseConfig);
     const messaging = firebase.messaging();
 
-    // Registra o service worker do FCM (sem useServiceWorker)
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/firebase-messaging-sw.js');
-    }
-
     // Função para pedir permissão e salvar o token FCM
     async function pedirPermissaoNotificacao(email) {
       try {
         await Notification.requestPermission();
-        const token = await messaging.getToken({
-          vapidKey: "BML_4olUoboxqhWK13mdVXQcKK-PtYWx7RYts8p0VgvNIzV9xq2AeAShKzvG10-fdb4TyNvR_lLuV6bS2KvUTvs"
-        });
-        if (token) {
-          await fetch("/salvar-token", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, token })
+        if ('serviceWorker' in navigator) {
+          const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+          console.log('Service Worker registrado:', registration);
+
+          // Agora obtenha o token usando o registration
+          const token = await messaging.getToken({
+            vapidKey: "BML_4olUoboxqhWK13mdVXQcKK-PtYWx7RYts8p0VgvNIzV9xq2AeAShKzvG10-fdb4TyNvR_lLuV6bS2KvUTvs",
+            serviceWorkerRegistration: registration
           });
-        } else {
-          console.log("Não foi possível obter o token FCM.");
+
+          if (token) {
+            await fetch("/salvar-token", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email, token })
+            });
+          } else {
+            console.log("Não foi possível obter o token FCM.");
+          }
         }
       } catch (err) {
         console.log("Permissão de notificação negada ou erro ao obter token", err);
@@ -132,5 +135,3 @@
       }
     }
   </script>
-</body>
-</html>
