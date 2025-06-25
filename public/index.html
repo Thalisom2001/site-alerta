@@ -47,7 +47,6 @@
     </div>
   </div>
 
-  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-messaging-compat.js"></script>
   <script>
@@ -63,32 +62,35 @@
 
     firebase.initializeApp(firebaseConfig);
     const messaging = firebase.messaging();
-
     let fcmToken = null;
 
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/firebase-messaging-sw.js')
-        .then(async (registration) => {
+    async function registrarNotificacoes() {
+      if ('serviceWorker' in navigator) {
+        try {
+          const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
           const permission = await Notification.requestPermission();
+
           if (permission !== 'granted') {
-            console.warn('Permissão de notificação negada.');
+            console.warn('Permissão negada');
             return;
           }
-          return messaging.getToken({
+
+          const token = await messaging.getToken({
             vapidKey: 'BML_4olUobxqhjWK13rmdVXQcKK-PtYWx7RYts8p0VgwNlZv9xq2AeAShKZvG10-fdb4TYNvR_LUv6bS2kUfTvs',
             serviceWorkerRegistration: registration
           });
-        })
-        .then(token => {
+
           if (token) {
             fcmToken = token;
-            console.log("Token FCM gerado:", token);
+            console.log("Token FCM:", token);
           }
-        })
-        .catch(error => {
-          console.error("Erro ao registrar notificação:", error);
-        });
+        } catch (error) {
+          console.error("Erro ao obter permissão ou token:", error);
+        }
+      }
     }
+
+    registrarNotificacoes();
 
     // Atualiza nível do rio
     fetch('/nivel-rio')
@@ -108,46 +110,41 @@
             cor = 'amarelo';
             status = 'Moderado';
           }
-          nivelValor.textContent = nivel.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + " m";
+          nivelValor.textContent = nivel.toFixed(2).replace('.', ',') + " m";
           nivelValor.className = cor;
           nivelLabel.textContent = status;
-        } else {
-          nivelValor.textContent = "--";
-          nivelValor.className = "verde";
-          nivelLabel.textContent = "";
         }
       });
 
-    // Envia dados do formulário com token FCM
-    document.getElementById('form-cadastro').addEventListener('submit', function(e) {
+    document.getElementById('form-cadastro').addEventListener('submit', async function(e) {
       e.preventDefault();
       const data = Object.fromEntries(new FormData(this));
       data.token = fcmToken;
 
-      fetch('/cadastrar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      })
-      .then(r => r.text())
-      .then(msg => {
+      const email = data.email;
+
+      try {
+        const r1 = await fetch('/cadastrar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const msg = await r1.text();
         alert(msg);
 
-        if (fcmToken && data.email) {
-          fetch('/salvar-token', {
+        if (email && fcmToken) {
+          await fetch('/salvar-token', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: data.email,
-              token: fcmToken
-            })
+            body: JSON.stringify({ email: email, token: fcmToken })
           });
         }
-      });
+      } catch (err) {
+        alert("Erro ao enviar dados: " + err.message);
+      }
     });
 
-    // Exibe notificações com site aberto
-    messaging.onMessage(function(payload) {
+    messaging.onMessage(payload => {
       alert(payload.notification.title + "\n" + payload.notification.body);
     });
   </script>
