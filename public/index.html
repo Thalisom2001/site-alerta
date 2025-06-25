@@ -40,7 +40,7 @@
           <option value="Angelim">Angelim</option>
           <option value="Promissão II">Promissão II</option>
           <option value="Jardim Amazônico">Jardim Amazônico ou Laércio II</option>
-          <option value="Camboatã">Camboatã</option>
+          <option value="Camboatã">Camboatã</option>  
         </select>
         <button type="submit">Quero receber alertas</button>
       </form>
@@ -65,17 +65,24 @@
     firebase.initializeApp(firebaseConfig);
     const messaging = firebase.messaging();
 
-    // Solicita permissão e token FCM ao carregar a página
     let fcmToken = null;
-    messaging.getToken({
-      vapidKey: 'BML_4olUobxqhjWK13rmdVXQcKK-PtYWx7RYts8p0VgwNlZv9xq2AeAShKZvG10-fdb4TYNvR_LUv6bS2kUfTvs'
-    })
-    .then((token) => {
-      fcmToken = token;
-      console.log('Token FCM:', token);
-    })
-    .catch((err) => {
-      console.warn('Erro ao obter token FCM:', err);
+
+    // Solicita permissão de notificação e obtém o token FCM
+    Notification.requestPermission().then(permission => {
+      if (permission === 'granted') {
+        messaging.getToken({
+          vapidKey: 'BML_4olUobxqhjWK13rmdVXQcKK-PtYWx7RYts8p0VgwNlZv9xq2AeAShKZvG10-fdb4TYNvR_LUv6bS2kUfTvs'
+        })
+        .then((token) => {
+          fcmToken = token;
+          console.log('Token FCM:', token);
+        })
+        .catch((err) => {
+          console.warn('Erro ao obter token FCM:', err);
+        });
+      } else {
+        console.warn('Permissão de notificação negada');
+      }
     });
 
     // Atualiza nível do rio
