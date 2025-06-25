@@ -116,33 +116,54 @@
         }
       });
 
-    document.getElementById('form-cadastro').addEventListener('submit', function(e) {
-      e.preventDefault();
-      const data = Object.fromEntries(new FormData(this));
-      data.token = fcmToken;
+    document.getElementById('form-cadastro').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  let token = fcmToken;
 
-      fetch('/cadastrar', {
+  // Solicita permissão e obtém o token somente ao cadastrar
+  if (!token) {
+    try {
+      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        alert('Você precisa permitir notificações para receber alertas!');
+        return;
+      }
+      token = await messaging.getToken({
+        vapidKey: 'BML_4olUobxqhjWK13rmdVXQcKK-PtYWx7RYts8p0VgwNlZv9xq2AeAShKZvG10-fdb4TYNvR_LUv6bS2kUfTvs',
+        serviceWorkerRegistration: registration
+      });
+      fcmToken = token;
+    } catch (error) {
+      alert('Erro ao obter permissão para notificações.');
+      return;
+    }
+  }
+
+  const data = Object.fromEntries(new FormData(this));
+  data.token = token;
+
+  fetch('/cadastrar', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  })
+  .then(r => r.text())
+  .then(msg => {
+    alert(msg);
+
+    if (token && data.email) {
+      fetch('/salvar-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      })
-      .then(r => r.text())
-      .then(msg => {
-        alert(msg);
-
-        if (fcmToken && data.email) {
-          fetch('/salvar-token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: data.email,
-              token: fcmToken
-            })
-          });
-        }
+        body: JSON.stringify({
+          email: data.email,
+          token: token
+        })
       });
-    });
-
+    }
+  });
+});
     messaging.onMessage(function(payload) {
       alert(payload.notification.title + "\n" + payload.notification.body);
     });
