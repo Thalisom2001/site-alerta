@@ -65,29 +65,57 @@
     const messaging = firebase.messaging();
     let fcmToken = null;
 
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/firebase-messaging-sw.js')
-        .then(async (registration) => {
-          const permission = await Notification.requestPermission();
-          if (permission !== 'granted') {
-            console.warn('Permissão de notificação negada.');
-            return;
-          }
-          return messaging.getToken({
-            vapidKey: 'BML_4olUobxqhjWK13rmdVXQcKK-PtYWx7RYts8p0VgwNlZv9xq2AeAShKZvG10-fdb4TYNvR_LUv6bS2kUfTvs',
-            serviceWorkerRegistration: registration
-          });
-        })
-        .then(token => {
-          if (token) {
-            fcmToken = token;
-            console.log("Token FCM gerado:", token);
-          }
-        })
-        .catch(error => {
-          console.error("Erro ao registrar notificação:", error);
+    async function solicitarPermissaoENotificar() {
+      try {
+        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+          alert('Você precisa permitir notificações para receber alertas!');
+          return null;
+        }
+        const token = await messaging.getToken({
+          vapidKey: 'BML_4olUobxqhjWK13rmdVXQcKK-PtYWx7RYts8p0VgwNlZv9xq2AeAShKZvG10-fdb4TYNvR_LUv6bS2kUfTvs',
+          serviceWorkerRegistration: registration
         });
+        return token;
+      } catch (error) {
+        alert('Erro ao obter permissão para notificações.');
+        return null;
+      }
     }
+
+    document.getElementById('form-cadastro').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(this));
+
+      if (!fcmToken) {
+        fcmToken = await solicitarPermissaoENotificar();
+        if (!fcmToken) return;
+      }
+
+      data.token = fcmToken;
+
+      fetch('/cadastrar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+      .then(r => r.text())
+      .then(msg => {
+        alert(msg);
+
+        if (fcmToken && data.email) {
+          fetch('/salvar-token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: data.email,
+              token: fcmToken
+            })
+          });
+        }
+      });
+    });
 
     fetch('/nivel-rio')
       .then(r => r.json())
@@ -116,57 +144,10 @@
         }
       });
 
-    document.getElementById('form-cadastro').addEventListener('submit', async function(e) {
-  e.preventDefault();
-  let token = fcmToken;
-
-  // Solicita permissão e obtém o token somente ao cadastrar
-  if (!token) {
-    try {
-      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-      const permission = await Notification.requestPermission();
-      if (permission !== 'granted') {
-        alert('Você precisa permitir notificações para receber alertas!');
-        return;
-      }
-      token = await messaging.getToken({
-        vapidKey: 'BML_4olUobxqhjWK13rmdVXQcKK-PtYWx7RYts8p0VgwNlZv9xq2AeAShKZvG10-fdb4TYNvR_LUv6bS2kUfTvs',
-        serviceWorkerRegistration: registration
-      });
-      fcmToken = token;
-    } catch (error) {
-      alert('Erro ao obter permissão para notificações.');
-      return;
-    }
-  }
-
-  const data = Object.fromEntries(new FormData(this));
-  data.token = token;
-
-  fetch('/cadastrar', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
-  })
-  .then(r => r.text())
-  .then(msg => {
-    alert(msg);
-
-    if (token && data.email) {
-      fetch('/salvar-token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: data.email,
-          token: token
-        })
-      });
-    }
-  });
-});
     messaging.onMessage(function(payload) {
       alert(payload.notification.title + "\n" + payload.notification.body);
     });
   </script>
 </body>
 </html>
+
