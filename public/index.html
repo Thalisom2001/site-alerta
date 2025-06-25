@@ -7,47 +7,20 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <img src="http://1.bp.blogspot.com/-dMXF4SBk690/UWyayg1drrI/AAAAAAAAFxM/0zkuEBofPjk/s1600/SUL+E+SUDESTE+SEGUNDA+FEIRA+15+DE+ABRIL+DE+2013+-+PROGRAMA+CIDADES+SUSTENT%C3%81VEIS+APONTA+PARAGOMINAS+COMO+REFER%C3%8ANCIA+NACIONAL.jpg" alt="Ponte sobre o Rio Uraim em Paragominas" class="header-img">
-
   <div class="container">
-    <div class="nivel-rio">
-      <h2 id="nivel-rio">
-        <span id="nivel-valor" class="verde">--</span><br>
-        <span id="nivel-label"></span>
-      </h2>
-      <span>Nível atual do Rio Uraim</span>
-    </div>
-    <div class="intro">
-      <h1>Bem-vindo ao Alerta Rio Uraim</h1>
-      <p>
-        Acompanhe em tempo real o nível do Rio Uraim em Paragominas-PA.<br>
-        Receba alertas diretamente no seu dispositivo e ajude a proteger sua família e sua comunidade.<br>
-        Fique informado, fique seguro!
-      </p>
-    </div>
-    <div class="cadastro">
-      <h3>Cadastre-se para receber alertas!</h3>
-      <p>Receba notificações instantâneas sobre mudanças no nível do rio e fique sempre preparado.<br>
-      Informe seus dados abaixo para participar da rede de segurança da nossa cidade.</p>
-      <form id="form-cadastro">
-        <input type="text" name="nome" placeholder="Seu nome" required>
-        <input type="email" name="email" placeholder="Seu e-mail" required>
-        <select name="bairro" required>
-          <option value="">Selecione seu bairro</option>
-          <option value="Jaderlândia">Jaderlândia</option>
-          <option value="Centro">Centro</option>
-          <option value="Uraim I">Uraim I</option>
-          <option value="Angelim">Angelim</option>
-          <option value="Promissão II">Promissão II</option>
-          <option value="Jardim Amazônico">Jardim Amazônico ou Laércio II</option>
-          <option value="Camboatã">Camboatã</option>  
-        </select>
-        <button type="submit">Quero receber alertas</button>
-      </form>
-    </div>
+    <h1>Alerta Rio Uraim</h1>
+    <form id="form-cadastro">
+      <input type="text" name="nome" placeholder="Seu nome" required>
+      <input type="email" name="email" placeholder="Seu e-mail" required>
+      <select name="bairro" required>
+        <option value="">Selecione seu bairro</option>
+        <option value="Jaderlândia">Jaderlândia</option>
+        <option value="Centro">Centro</option>
+      </select>
+      <button type="submit">Cadastrar</button>
+    </form>
   </div>
 
-  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-messaging-compat.js"></script>
   <script>
@@ -57,93 +30,51 @@
       projectId: "site-alerta-219e8",
       storageBucket: "site-alerta-219e8.appspot.com",
       messagingSenderId: "972115747427",
-      appId: "1:972115747427:web:94007eddafd0efbfb88e56",
-      measurementId: "G-DKXX5EMXG0"
+      appId: "1:972115747427:web:94007eddafd0efbfb88e56"
     };
 
     firebase.initializeApp(firebaseConfig);
     const messaging = firebase.messaging();
+
     let fcmToken = null;
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/firebase-messaging-sw.js')
         .then(async (registration) => {
           const permission = await Notification.requestPermission();
-          if (permission !== 'granted') {
-            console.warn('Permissão de notificação negada.');
-            return;
-          }
-          return messaging.getToken({
-            vapidKey: 'BML_4olUobxqhjWK13rmdVXQcKK-PtYWx7RYts8p0VgwNlZv9xq2AeAShKZvG10-fdb4TYNvR_LUv6bS2kUfTvs',
-            serviceWorkerRegistration: registration
-          });
-        })
-        .then(token => {
-          if (token) {
-            fcmToken = token;
-            console.log("Token FCM gerado:", token);
+          if (permission === 'granted') {
+            const token = await messaging.getToken({
+              vapidKey: 'BML_4olUobxqhWK13mdVXQCKK-PtYWx7RYts8p0VgvNlZV9xq2AeAShKZvG10-fdb4TJvNrL_lLuv6bS2kVUtvs',
+              serviceWorkerRegistration: registration
+            });
+            if (token) {
+              console.log('Token gerado:', token);
+              fcmToken = token;
+            }
+          } else {
+            console.warn('Permissão de notificação negada');
           }
         })
-        .catch(error => {
-          console.error("Erro ao registrar notificação:", error);
-        });
+        .catch(err => console.error('Erro ao registrar service worker ou obter token:', err));
     }
 
-    fetch('/nivel-rio')
-      .then(r => r.json())
-      .then(d => {
-        const nivel = parseFloat(d.nivel);
-        const nivelValor = document.getElementById('nivel-valor');
-        const nivelLabel = document.getElementById('nivel-label');
-        let cor = 'verde';
-        let status = 'Normal';
-
-        if (!isNaN(nivel)) {
-          if (nivel >= 4) {
-            cor = 'vermelho';
-            status = 'Crítico';
-          } else if (nivel >= 3) {
-            cor = 'amarelo';
-            status = 'Moderado';
-          }
-          nivelValor.textContent = nivel.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + " m";
-          nivelValor.className = cor;
-          nivelLabel.textContent = status;
-        } else {
-          nivelValor.textContent = "--";
-          nivelValor.className = "verde";
-          nivelLabel.textContent = "";
-        }
-      });
-
-    document.getElementById('form-cadastro').addEventListener('submit', function(e) {
+    document.getElementById('form-cadastro').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const data = Object.fromEntries(new FormData(this));
-      data.token = fcmToken;
+      const formData = new FormData(e.target);
+      const data = Object.fromEntries(formData.entries());
+      if (fcmToken) data.token = fcmToken;
 
-      fetch('/cadastrar', {
+      const res = await fetch('/cadastrar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
-      })
-      .then(r => r.text())
-      .then(msg => {
-        alert(msg);
-
-        if (fcmToken && data.email) {
-          fetch('/salvar-token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: data.email,
-              token: fcmToken
-            })
-          });
-        }
       });
+
+      const msg = await res.text();
+      alert(msg);
     });
 
-    messaging.onMessage(function(payload) {
+    messaging.onMessage((payload) => {
       alert(payload.notification.title + "\n" + payload.notification.body);
     });
   </script>
