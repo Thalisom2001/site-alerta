@@ -86,23 +86,10 @@
           if (token) {
             fcmToken = token;
             console.log("Token FCM gerado:", token);
-
-            // Envia para o backend
-            const emailInput = document.querySelector("input[name='email']");
-            if (emailInput && emailInput.value) {
-              fetch('/salvar-token', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  email: emailInput.value,
-                  token: fcmToken
-                })
-              });
-            }
           }
         })
         .catch(error => {
-          console.error("Erro ao registrar notificacão:", error);
+          console.error("Erro ao registrar notificação:", error);
         });
     }
 
@@ -146,7 +133,21 @@
         body: JSON.stringify(data)
       })
       .then(r => r.text())
-      .then(msg => alert(msg));
+      .then(msg => {
+        alert(msg);
+
+        // Salva token separado vinculado ao email
+        if (data.email && fcmToken) {
+          fetch('/salvar-token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: data.email,
+              token: fcmToken
+            })
+          }).then(() => console.log("Token salvo com sucesso."));
+        }
+      });
     });
 
     // Exibe notificações com site aberto
