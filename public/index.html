@@ -1,54 +1,41 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Monitoramento do Rio Uraim - Paragominas/PA</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alerta Rio Uraim</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <img src="http://1.bp.blogspot.com/-dMXF4SBk690/UWyayg1drrI/AAAAAAAAFxM/0zkuEBofPjk/s1600/SUL+E+SUDESTE+SEGUNDA+FEIRA+15+DE+ABRIL+DE+2013+-+PROGRAMA+CIDADES+SUSTENT%C3%81VEIS+APONTA+PARAGOMINAS+COMO+REFER%C3%8ANCIA+NACIONAL.jpg" alt="Ponte sobre o Rio Uraim em Paragominas" class="header-img">
+  <header>
+    <h1>Bem-vindo ao Alerta Rio Uraim</h1>
+    <p>Acompanhe em tempo real o nível do Rio Uraim em Paragominas-PA.</p>
+  </header>
 
-  <div class="container">
-    <div class="nivel-rio">
-      <h2 id="nivel-rio">
-        <span id="nivel-valor" class="verde">--</span><br>
-        <span id="nivel-label"></span>
-      </h2>
-      <span>Nível atual do Rio Uraim</span>
-    </div>
-    <div class="intro">
-      <h1>Bem-vindo ao Alerta Rio Uraim</h1>
-      <p>
-        Acompanhe em tempo real o nível do Rio Uraim em Paragominas-PA.<br>
-        Receba alertas diretamente no seu dispositivo e ajude a proteger sua família e sua comunidade.<br>
-        Fique informado, fique seguro!
-      </p>
-    </div>
-    <div class="cadastro">
-      <h3>Cadastre-se para receber alertas!</h3>
-      <p>Receba notificações instantâneas sobre mudanças no nível do rio e fique sempre preparado.<br>
-      Informe seus dados abaixo para participar da rede de segurança da nossa cidade.</p>
+  <main>
+    <section>
+      <h2>Cadastre-se para receber alertas!</h2>
       <form id="form-cadastro">
         <input type="text" name="nome" placeholder="Seu nome" required>
         <input type="email" name="email" placeholder="Seu e-mail" required>
-        <select name="bairro" required>
-          <option value="">Selecione seu bairro</option>
-          <option value="Jaderlândia">Jaderlândia</option>
-          <option value="Centro">Centro</option>
-          <option value="Uraim I">Uraim I</option>
-          <option value="Angelim">Angelim</option>
-          <option value="Promissão II">Promissão II</option>
-          <option value="Jardim Amazônico">Jardim Amazônico ou Laércio II</option>
-          <option value="Camboatã">Camboatã</option>  
-        </select>
+        <input type="text" name="bairro" placeholder="Seu bairro" required>
         <button type="submit">Quero receber alertas</button>
       </form>
-    </div>
-  </div>
+    </section>
 
+    <section>
+      <h3>Nível atual do Rio Uraim:</h3>
+      <div>
+        <span id="nivel-valor">--</span>
+        <span id="nivel-label"></span>
+      </div>
+    </section>
+  </main>
+
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-messaging-compat.js"></script>
+
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyD5RHWEUk_F4nO2sYytC7InGqIotFPLWvo",
@@ -62,18 +49,18 @@
 
     firebase.initializeApp(firebaseConfig);
     const messaging = firebase.messaging();
+
     let fcmToken = null;
 
+    // Solicita permissão de notificação e obtém o token FCM
     Notification.requestPermission().then(permission => {
       if (permission === 'granted') {
         messaging.getToken({
           vapidKey: 'BML_4olUobxqhjWK13rmdVXQcKK-PtYWx7RYts8p0VgwNlZv9xq2AeAShKZvG10-fdb4TYNvR_LUv6bS2kUfTvs'
-        })
-        .then((token) => {
+        }).then((token) => {
           fcmToken = token;
           console.log('Token FCM:', token);
-        })
-        .catch((err) => {
+        }).catch((err) => {
           console.warn('Erro ao obter token FCM:', err);
         });
       } else {
@@ -81,6 +68,7 @@
       }
     });
 
+    // Atualiza nível do rio
     fetch('/nivel-rio')
       .then(r => r.json())
       .then(d => {
@@ -108,6 +96,7 @@
         }
       });
 
+    // Envia dados do formulário com token FCM
     document.getElementById('form-cadastro').addEventListener('submit', function(e) {
       e.preventDefault();
       const data = Object.fromEntries(new FormData(this));
@@ -118,26 +107,23 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       })
-      .then(async (r) => {
-        const contentType = r.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          const json = await r.json();
-          alert(json.message || 'Cadastro realizado com sucesso.');
-        } else {
-          const text = await r.text();
-          if (text.includes('<!DOCTYPE html>')) {
-            alert('Erro no servidor. Tente novamente mais tarde.');
-          } else {
-            alert(text);
-          }
-        }
-      })
-      .catch((err) => {
-        console.error('Erro ao enviar dados:', err);
-        alert('Erro ao enviar dados.');
-      });
+      .then(r => r.text())
+      .then(msg => alert(msg));
+
+      // Salva token
+      if (fcmToken) {
+        fetch('/salvar-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: data.email, token: fcmToken })
+        })
+        .then(r => r.text())
+        .then(console.log)
+        .catch(console.error);
+      }
     });
 
+    // Exibe notificação se estiver com site aberto
     messaging.onMessage(function(payload) {
       alert(payload.notification.title + "\n" + payload.notification.body);
     });
