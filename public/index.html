@@ -41,15 +41,40 @@
           <option value="Promissão II">Promissão II</option>
           <option value="Jardim Amazônico">Jardim Amazônico ou Laércio II</option>
           <option value="Camboatã">Camboatã</option>  
-          <!-- Adicione mais bairros se necessário -->
         </select>
         <button type="submit">Quero receber alertas</button>
       </form>
     </div>
   </div>
 
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-messaging-compat.js"></script>
   <script>
-    // Busca o nível do rio e aplica cor/status
+    const firebaseConfig = {
+      apiKey: "AIzaSyD5RHWEUk_F4nO2sYytC7InGqIotFPLWvo",
+      authDomain: "site-alerta-219e8.firebaseapp.com",
+      projectId: "site-alerta-219e8",
+      storageBucket: "site-alerta-219e8.appspot.com",
+      messagingSenderId: "972115747427",
+      appId: "1:972115747427:web:94007eddafd0efbfb88e56",
+      measurementId: "G-DKXX5EMXG0"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const messaging = firebase.messaging();
+
+    // Solicita permissão e obtém token FCM
+    messaging.requestPermission()
+      .then(() => messaging.getToken())
+      .then((token) => {
+        console.log("Token FCM:", token);
+        window.fcmToken = token;
+      })
+      .catch((err) => {
+        console.warn("Permissão negada para notificações:", err);
+      });
+
+    // Atualiza nível do rio
     fetch('/nivel-rio')
       .then(r => r.json())
       .then(d => {
@@ -77,18 +102,22 @@
         }
       });
 
-    // Cadastro (exemplo, ajuste conforme seu backend)
+    // Envio de cadastro com token FCM
     document.getElementById('form-cadastro').addEventListener('submit', function(e) {
       e.preventDefault();
       const data = Object.fromEntries(new FormData(this));
+      data.token = window.fcmToken || null;
       fetch('/cadastrar', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(data)
       }).then(r => r.text()).then(msg => alert(msg));
     });
+
+    // Exibe alerta se o site estiver aberto
+    messaging.onMessage(function(payload) {
+      alert(payload.notification.title + "\n" + payload.notification.body);
+    });
   </script>
 </body>
 </html>
-
-
