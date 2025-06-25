@@ -66,34 +66,43 @@
 
     let fcmToken = null;
 
-    // Registra o service worker e solicita permissão de notificação
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/firebase-messaging-sw.js')
         .then((registration) => {
-          messaging.useServiceWorker(registration);
-          return Notification.requestPermission();
-        })
-        .then(permission => {
-          if (permission === 'granted') {
-            return messaging.getToken({
-              vapidKey: 'BML_4olUobxqhjWK13rmdVXQcKK-PtYWx7RYts8p0VgwNlZv9xq2AeAShKZvG10-fdb4TYNvR_LUv6bS2kUfTvs'
-            });
-          } else {
-            console.warn('Permissão de notificação negada.');
-          }
+          return Notification.requestPermission().then((permission) => {
+            if (permission === 'granted') {
+              return messaging.getToken({
+                vapidKey: 'BML_4olUobxqhjWK13rmdVXQcKK-PtYWx7RYts8p0VgwNlZv9xq2AeAShKZvG10-fdb4TYNvR_LUv6bS2kUfTvs',
+                serviceWorkerRegistration: registration
+              });
+            } else {
+              console.warn('Permissão de notificação negada.');
+            }
+          });
         })
         .then(token => {
           if (token) {
             fcmToken = token;
             console.log("Token FCM gerado:", token);
+
+            const emailInput = document.querySelector("input[name='email']");
+            if (emailInput && emailInput.value) {
+              fetch('/salvar-token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  email: emailInput.value,
+                  token: fcmToken
+                })
+              });
+            }
           }
         })
         .catch(error => {
-          console.error("Erro ao registrar notificação:", error);
+          console.error("Erro ao registrar notificacão:", error);
         });
     }
 
-    // Atualiza nível do rio
     fetch('/nivel-rio')
       .then(r => r.json())
       .then(d => {
@@ -121,7 +130,6 @@
         }
       });
 
-    // Envia dados do formulário com token FCM
     document.getElementById('form-cadastro').addEventListener('submit', function(e) {
       e.preventDefault();
       const data = Object.fromEntries(new FormData(this));
@@ -133,24 +141,9 @@
         body: JSON.stringify(data)
       })
       .then(r => r.text())
-      .then(msg => {
-        alert(msg);
-
-        // Salva token separado vinculado ao email
-        if (data.email && fcmToken) {
-          fetch('/salvar-token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: data.email,
-              token: fcmToken
-            })
-          }).then(() => console.log("Token salvo com sucesso."));
-        }
-      });
+      .then(msg => alert(msg));
     });
 
-    // Exibe notificações com site aberto
     messaging.onMessage(function(payload) {
       alert(payload.notification.title + "\n" + payload.notification.body);
     });
