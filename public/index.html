@@ -47,10 +47,8 @@
     </div>
   </div>
 
-  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-messaging-compat.js"></script>
-
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyD5RHWEUk_F4nO2sYytC7InGqIotFPLWvo",
@@ -64,10 +62,8 @@
 
     firebase.initializeApp(firebaseConfig);
     const messaging = firebase.messaging();
-
     let fcmToken = null;
 
-    // Solicita permissão de notificação e obtém o token FCM
     Notification.requestPermission().then(permission => {
       if (permission === 'granted') {
         messaging.getToken({
@@ -85,7 +81,6 @@
       }
     });
 
-    // Atualiza nível do rio
     fetch('/nivel-rio')
       .then(r => r.json())
       .then(d => {
@@ -113,7 +108,6 @@
         }
       });
 
-    // Envia dados do formulário com token FCM
     document.getElementById('form-cadastro').addEventListener('submit', function(e) {
       e.preventDefault();
       const data = Object.fromEntries(new FormData(this));
@@ -124,11 +118,26 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       })
-      .then(r => r.text())
-      .then(msg => alert(msg));
+      .then(async (r) => {
+        const contentType = r.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const json = await r.json();
+          alert(json.message || 'Cadastro realizado com sucesso.');
+        } else {
+          const text = await r.text();
+          if (text.includes('<!DOCTYPE html>')) {
+            alert('Erro no servidor. Tente novamente mais tarde.');
+          } else {
+            alert(text);
+          }
+        }
+      })
+      .catch((err) => {
+        console.error('Erro ao enviar dados:', err);
+        alert('Erro ao enviar dados.');
+      });
     });
 
-    // Exibe notificação se estiver com site aberto
     messaging.onMessage(function(payload) {
       alert(payload.notification.title + "\n" + payload.notification.body);
     });
