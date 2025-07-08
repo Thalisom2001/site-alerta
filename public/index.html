@@ -32,21 +32,25 @@
       <form id="form-cadastro">
         <input type="text" name="nome" placeholder="Seu nome" required>
         <input type="email" name="email" placeholder="Seu e-mail" required>
-        <select name="bairro" required>
-  <option value="">Selecione seu bairro</option>
-  <option value="Jaderlândia">Jaderlândia</option>
-  <option value="Centro">Centro</option>
-  <option value="Uraim II">Uraim II</option>
-  <option value="Angelim">Angelim</option>
-  <option value="Promissão I">Promissão I</option>
-  <option value="Promissão II">Promissão II</option>
-  <option value="Nova Esperança">Nova Esperança</option>
-  <option value="Sidney Rosa">Sidney Rosa</option>
-  <option value="Sidilandia I">Sidilandia I</option>
-  <option value="Cidade Nova">Cidade Nova</option>
-  <option value="Camboatã">Camboatã</option>
-  <option value="Outro">Outro, (rua e bairro)</option>
-</select>
+        <label for="bairro-select">Selecione seu bairro ou informe outro:</label>
+        <select name="bairro" id="bairro-select" required>
+          <option value="">-- Selecione seu bairro --</option>
+          <option value="Jaderlândia">Jaderlândia</option>
+          <option value="Centro">Centro</option>
+          <option value="Uraim II">Uraim II</option>
+          <option value="Angelim">Angelim</option>
+          <option value="Promissão I">Promissão I</option>
+          <option value="Promissão II">Promissão II</option>
+          <option value="Nova Esperança">Nova Esperança</option>
+          <option value="Sidney Rosa">Sidney Rosa</option>
+          <option value="Sidilandia I">Sidilandia I</option>
+          <option value="Cidade Nova">Cidade Nova</option>
+          <option value="Camboatã">Camboatã</option>
+          <option value="Outro">Outro (Rua e Bairro)</option>
+        </select>
+        <input type="text" name="bairro_outro" id="bairro-outro"
+               placeholder="Digite sua rua e bairro"
+               style="display:none; margin-top:8px;" />
         <button type="submit">Quero receber alertas</button>
       </form>
     </div>
@@ -148,7 +152,19 @@
           nivelLabel.textContent = "";
         }
       });
-
+      
+const bairroSelect = document.getElementById('bairro-select');
+    const outroInput   = document.getElementById('bairro-outro');
+    bairroSelect.addEventListener('change', function() {
+      if (this.value === 'Outro') {
+        outroInput.style.display  = 'block';
+        outroInput.required       = true;
+      } else {
+        outroInput.style.display  = 'none';
+        outroInput.required       = false;
+        outroInput.value          = '';
+      }
+    });
     messaging.onMessage(function(payload) {
       alert(payload.notification.title + "\n" + payload.notification.body);
     });
